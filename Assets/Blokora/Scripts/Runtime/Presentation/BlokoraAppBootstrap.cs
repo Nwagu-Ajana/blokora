@@ -2,7 +2,6 @@ using Blokora.Domain;
 using Blokora.Gameplay;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace Blokora.Presentation
@@ -29,7 +28,7 @@ namespace Blokora.Presentation
         private void Awake()
         {
             controller = gameObject.AddComponent<BlokoraGameController>(); controller.StartEndless();
-            if (FindObjectOfType<EventSystem>() == null) { var events = new GameObject("EventSystem"); events.AddComponent<EventSystem>(); events.AddComponent<InputSystemUIInputModule>(); }
+            if (FindObjectOfType<EventSystem>() == null) { var events = new GameObject("EventSystem"); events.AddComponent<EventSystem>(); events.AddComponent<StandaloneInputModule>(); }
             BuildInterface();
         }
 
@@ -56,7 +55,30 @@ namespace Blokora.Presentation
         private void DrawTray(RectTransform tray)
         {
             for (var i = tray.childCount - 1; i >= 0; i--) Destroy(tray.GetChild(i).gameObject);
-            for (var i = 0; i < controller.Pieces.Count; i++) { var piece = Panel(tray, new Color32(59, 130, 246, 255), $"Piece_{i}"); piece.sizeDelta = new Vector2(210, 190); piece.gameObject.AddComponent<PieceDragView>().Initialize(controller, i, boardRoot, this); }
+            for (var i = 0; i < controller.Pieces.Count; i++)
+            {
+                var piece = Panel(tray, new Color(0, 0, 0, 0), $"Piece_{i}");
+                piece.sizeDelta = new Vector2(210, 190);
+                DrawPiecePreview(piece, controller.Pieces[i]);
+                piece.gameObject.AddComponent<PieceDragView>().Initialize(controller, i, boardRoot, this);
+            }
+        }
+
+        private void DrawPiecePreview(RectTransform parent, PieceDefinition definition)
+        {
+            const float cell = 42f;
+            const float gap = 6f;
+            var minX = 99; var minY = 99; var maxX = -99; var maxY = -99;
+            foreach (var point in definition.Cells) { minX = Mathf.Min(minX, point.x); minY = Mathf.Min(minY, point.y); maxX = Mathf.Max(maxX, point.x); maxY = Mathf.Max(maxY, point.y); }
+            var centerX = (minX + maxX) * 0.5f; var centerY = (minY + maxY) * 0.5f;
+            foreach (var point in definition.Cells)
+            {
+                var block = Panel(parent, primary, $"Block_{point.x}_{point.y}");
+                block.sizeDelta = new Vector2(cell, cell);
+                block.anchorMin = new Vector2(.5f, .5f); block.anchorMax = new Vector2(.5f, .5f);
+                block.anchoredPosition = new Vector2((point.x - centerX) * (cell + gap), -(point.y - centerY) * (cell + gap));
+                block.gameObject.AddComponent<CanvasGroup>().blocksRaycasts = false;
+            }
         }
 
         public void Refresh() { DrawBoard(boardRoot.GetComponent<GridLayoutGroup>()); UpdateScore(); }
@@ -77,8 +99,17 @@ namespace Blokora.Presentation
     {
         private BlokoraGameController controller; private int trayIndex; private RectTransform board; private BlokoraAppBootstrap app; private Vector2 originalPosition; private CanvasGroup group;
         public void Initialize(BlokoraGameController game, int index, RectTransform boardRoot, BlokoraAppBootstrap bootstrap) { controller = game; trayIndex = index; board = boardRoot; app = bootstrap; group = gameObject.AddComponent<CanvasGroup>(); }
-        public void OnPointerDown(PointerEventData eventData) { originalPosition = ((RectTransform)transform).anchoredPosition; ((RectTransform)transform).localScale = Vector3.one * 1.12f; group.alpha = .88f; }
-        public void OnDrag(PointerEventData eventData) { ((RectTransform)transform).position = eventData.position + new Vector2(0, 100); }
-        public void OnPointerUp(PointerEventData eventData) { var local = board.InverseTransformPoint(eventData.position); var x = Mathf.FloorToInt((local.x + board.rect.width / 2 - 16) / 95); var y = Mathf.FloorToInt((board.rect.height / 2 - local.y - 16) / 95); var placed = controller.Place(trayIndex, x, y); if (!placed) ((RectTransform)transform).anchoredPosition = originalPosition; ((RectTransform)transform).localScale = Vector3.one; group.alpha = 1; if (placed) app.Refresh(); }
+        public void OnPointerDown(PointerEventData eventData) { originalPosition = ((RectTransform)transform).anchoredPosition; transform.SetAsLastSibling(); ((RectTransform)transform).localScale = Vector3.one * 1.12f; group.alpha = .88f; }
+        public void OnDrag(PointerEventData eventData) { ((RectTransform)transform).position = eventData.position + new Vector2(0, 110); }
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(board, eventData.position, eventData.pressEventCamera, out var local);
+            var x = Mathf.FloorToInt((local.x + board.rect.width / 2 - 16) / 95);
+            var y = Mathf.FloorToInt((board.rect.height / 2 - local.y - 16) / 95);
+            var placed = controller.Place(trayIndex, x, y);
+            if (!placed) ((RectTransform)transform).anchoredPosition = originalPosition;
+            ((RectTransform)transform).localScale = Vector3.one; group.alpha = 1;
+            if (placed) app.Refresh();
+        }
     }
 }
