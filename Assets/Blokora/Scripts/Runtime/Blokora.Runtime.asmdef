@@ -1,7 +1,10 @@
 {
   "name": "Blokora.Runtime",
   "rootNamespace": "Blokora",
-  "references": [],
+  "references": [
+    "Unity.InputSystem",
+    "Unity.InputSystem.ForUI"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
