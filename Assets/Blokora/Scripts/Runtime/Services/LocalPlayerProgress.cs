@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Blokora.Services
@@ -18,6 +19,8 @@ namespace Blokora.Services
         public int LinesCleared;
         public int BestCombo;
         public string EquippedSkin = "classic";
+        public List<string> OwnedCosmetics = new List<string> { "classic" };
+        public string LastDailyRewardUtcDay = string.Empty;
 
         public float WinRate => GamesPlayed == 0 ? 0f : (float)GamesWon / GamesPlayed;
 
@@ -34,11 +37,31 @@ namespace Blokora.Services
             Save(this);
         }
 
+        public bool Owns(string cosmeticId) { return OwnedCosmetics != null && OwnedCosmetics.Contains(cosmeticId); }
+        public bool TryPurchaseAndEquip(string cosmeticId, int cost)
+        {
+            if (Owns(cosmeticId)) { EquippedSkin = cosmeticId; Save(this); return true; }
+            if (cost < 0 || Coins < cost) return false;
+            Coins -= cost; OwnedCosmetics.Add(cosmeticId); EquippedSkin = cosmeticId; Save(this); return true;
+        }
+
+        public bool TryClaimDailyReward(out int coins)
+        {
+            var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            if (LastDailyRewardUtcDay == today) { coins = 0; return false; }
+            coins = 100; Coins += coins; LastDailyRewardUtcDay = today; Save(this); return true;
+        }
+
         public static LocalPlayerProgress Load()
         {
             var json = PlayerPrefs.GetString("blokora.player.progress", string.Empty);
             if (string.IsNullOrEmpty(json)) return new LocalPlayerProgress();
-            try { return JsonUtility.FromJson<LocalPlayerProgress>(json) ?? new LocalPlayerProgress(); }
+            try
+            {
+                var progress = JsonUtility.FromJson<LocalPlayerProgress>(json) ?? new LocalPlayerProgress();
+                if (progress.OwnedCosmetics == null || progress.OwnedCosmetics.Count == 0) progress.OwnedCosmetics = new List<string> { "classic" };
+                return progress;
+            }
             catch { return new LocalPlayerProgress(); }
         }
 
