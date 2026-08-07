@@ -111,6 +111,22 @@ namespace Blokora.Presentation
 
         public void Refresh() { if (boardRoot == null) return; DrawBoard(boardRoot.GetComponent<GridLayoutGroup>()); UpdateScore(); DrawTray(trayRoot); }
         private void UpdateScore() { if (scoreLabel != null) scoreLabel.text = $"SCORE  {controller.Session.Score}   •   COMBO {controller.Session.Combo}"; if (statusLabel != null) statusLabel.text = controller.Session.IsGameOver ? $"RUN COMPLETE  •  {controller.Session.Score} POINTS  •  {controller.Session.LinesCleared} LINES" : "DRAG A BLOCK ONTO THE BOARD"; RefreshHeader(); }
+        public void ShowPlacementPreview(PieceDefinition piece, int x, int y)
+        {
+            if (boardRoot == null) return;
+            var valid = controller.Session.Board.CanPlace(piece, x, y);
+            var grid = boardRoot.GetComponent<GridLayoutGroup>();
+            for (var cellIndex = 0; cellIndex < grid.transform.childCount; cellIndex++)
+            {
+                var cell = grid.transform.GetChild(cellIndex).GetComponent<Image>();
+                var cellX = cellIndex % controller.Session.Board.Width; var cellY = cellIndex / controller.Session.Board.Width;
+                var highlighted = false;
+                foreach (var point in piece.Cells) highlighted |= cellX == x + point.x && cellY == y + point.y;
+                if (highlighted) cell.color = valid ? new Color32(16, 185, 129, 255) : new Color32(239, 68, 68, 230);
+            }
+            if (statusLabel != null) statusLabel.text = valid ? "RELEASE TO PLACE" : "BLOCKED — FIND AN OPEN SPACE";
+        }
+        public void ClearPlacementPreview() { if (boardRoot == null) return; DrawBoard(boardRoot.GetComponent<GridLayoutGroup>()); UpdateScore(); }
         private static RectTransform Panel(Transform parent, Color color, string name) { var go = new GameObject(name); go.transform.SetParent(parent, false); var image = go.AddComponent<Image>(); image.color = color; return go.GetComponent<RectTransform>(); }
         private static void Stretch(RectTransform rect) { rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero; }
         private static Text Label(Transform parent, string text, int size, Color color, Vector2 min, Vector2 max, Vector2 position, Vector2 dimensions, TextAnchor anchor) { var go = new GameObject(text); go.transform.SetParent(parent, false); var rect = go.AddComponent<RectTransform>(); rect.anchorMin = min; rect.anchorMax = max; rect.sizeDelta = dimensions; rect.anchoredPosition = position; var label = go.AddComponent<Text>(); label.text = text; label.font = Resources.GetBuiltinResource<Font>("Arial.ttf"); label.fontSize = size; label.color = color; label.alignment = anchor; label.fontStyle = FontStyle.Bold; return label; }
@@ -128,16 +144,24 @@ namespace Blokora.Presentation
         private BlokoraGameController controller; private int trayIndex; private RectTransform board; private BlokoraAppBootstrap app; private Vector2 originalPosition; private CanvasGroup group;
         public void Initialize(BlokoraGameController game, int index, RectTransform boardRoot, BlokoraAppBootstrap bootstrap) { controller = game; trayIndex = index; board = boardRoot; app = bootstrap; group = gameObject.AddComponent<CanvasGroup>(); }
         public void OnPointerDown(PointerEventData eventData) { originalPosition = ((RectTransform)transform).anchoredPosition; transform.SetAsLastSibling(); ((RectTransform)transform).localScale = Vector3.one * 1.12f; group.alpha = .88f; }
-        public void OnDrag(PointerEventData eventData) { ((RectTransform)transform).position = eventData.position + new Vector2(0, 110); }
+        public void OnDrag(PointerEventData eventData)
+        {
+            ((RectTransform)transform).position = eventData.position + new Vector2(0, 110);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(board, eventData.position, eventData.pressEventCamera, out var local);
+            var x = Mathf.FloorToInt((local.x + board.rect.width / 2 - 14) / 86);
+            var y = Mathf.FloorToInt((board.rect.height / 2 - local.y - 14) / 86);
+            app.ShowPlacementPreview(controller.Pieces[trayIndex], x, y);
+        }
         public void OnPointerUp(PointerEventData eventData)
         {
             RectTransformUtility.ScreenPointToLocalPointInRectangle(board, eventData.position, eventData.pressEventCamera, out var local);
-            var x = Mathf.FloorToInt((local.x + board.rect.width / 2 - 16) / 95);
-            var y = Mathf.FloorToInt((board.rect.height / 2 - local.y - 16) / 95);
+            var x = Mathf.FloorToInt((local.x + board.rect.width / 2 - 14) / 86);
+            var y = Mathf.FloorToInt((board.rect.height / 2 - local.y - 14) / 86);
             var placed = controller.Place(trayIndex, x, y);
-            if (!placed) ((RectTransform)transform).anchoredPosition = originalPosition;
+            if (!placed) { ((RectTransform)transform).anchoredPosition = originalPosition; if (controller.Settings.Haptics) Handheld.Vibrate(); }
             ((RectTransform)transform).localScale = Vector3.one; group.alpha = 1;
-            if (placed) app.Refresh();
+            if (placed) { if (controller.Settings.Haptics) Handheld.Vibrate(); app.Refresh(); }
+            else app.ClearPlacementPreview();
         }
     }
 }
