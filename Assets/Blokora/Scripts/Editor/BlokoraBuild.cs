@@ -10,11 +10,16 @@ namespace Blokora.Editor
         private const string GameplayScene = "Assets/Blokora/Scenes/Blokora.unity";
         private const string AndroidOutput = "Builds/Android/Blokora-development.apk";
 
+
         public static void BuildAndroidDevelopment()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(AndroidOutput)!);
 
             EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android);
+            PlayerSettings.allowedAutorotateToPortrait = true;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            PlayerSettings.allowedAutorotateToLandscapeLeft = false;
+            PlayerSettings.allowedAutorotateToLandscapeRight = false;
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.Mono2x);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.All;
             PlayerSettings.SetArchitecture(NamedBuildTarget.Android, unchecked((int)AndroidArchitecture.All));
