@@ -5,8 +5,14 @@ namespace Blokora.Domain
 {
     public readonly struct ClearResult
     {
-        public readonly int Lines; public readonly int Cells;
-        public ClearResult(int lines, int cells) { Lines = lines; Cells = cells; }
+        public readonly int Lines;
+        public readonly int Rows;
+        public readonly int Columns;
+        public readonly int Cells;
+        public ClearResult(int rows, int columns, int cells)
+        {
+            Rows = rows; Columns = columns; Lines = rows + columns; Cells = cells;
+        }
     }
 
     public sealed class BoardModel
@@ -36,7 +42,7 @@ namespace Blokora.Domain
             foreach (var y in fullRows) for (var x = 0; x < Width; x++) cleared.Add((x, y));
             foreach (var x in fullColumns) for (var y = 0; y < Height; y++) cleared.Add((x, y));
             foreach (var cell in cleared) occupied[cell.x, cell.y] = false;
-            return new ClearResult(fullRows.Count + fullColumns.Count, cleared.Count);
+            return new ClearResult(fullRows.Count, fullColumns.Count, cleared.Count);
         }
 
         public bool HasAnyValidPlacement(IReadOnlyList<PieceDefinition> pieces)

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Blokora.Domain;
+using Blokora.Gameplay;
 using NUnit.Framework;
 
 namespace Blokora.Tests
@@ -50,6 +51,36 @@ namespace Blokora.Tests
         [Test] public void ScoreRulesAreCentralized()
         {
             Assert.That(ScoreRules.Placement(4), Is.EqualTo(20)); Assert.That(ScoreRules.Lines(2, 3), Is.EqualTo(375));
+        }
+
+        [Test] public void CatalogContainsVerticalAndCompoundPatterns()
+        {
+            var vertical = false; var compound = false;
+            foreach (var piece in PieceCatalog.All) { vertical |= piece.Id == "line4v"; compound |= piece.Id == "plus"; }
+            Assert.That(vertical, Is.True); Assert.That(compound, Is.True);
+        }
+
+        [Test] public void ClearResultReportsRowsAndColumnsSeparately()
+        {
+            var result = new ClearResult(2, 1, 10);
+            Assert.That(result.Lines, Is.EqualTo(3));
+            Assert.That(result.Rows, Is.EqualTo(2));
+            Assert.That(result.Columns, Is.EqualTo(1));
+        }
+
+        [Test] public void SoloSessionKeepsExactlyThreePieces()
+        {
+            var session = new SoloGameSession(42);
+            Assert.That(session.Tray, Has.Count.EqualTo(3));
+            Assert.That(session.TryPlace(0, 0, 0, out _), Is.True);
+            Assert.That(session.Tray, Has.Count.EqualTo(3));
+        }
+
+        [Test] public void ClearLabelsAreReadable()
+        {
+            Assert.That(ScoreRules.ClearLabel(1, 0), Is.EqualTo("SINGLE CLEAR"));
+            Assert.That(ScoreRules.ClearLabel(2, 0), Is.EqualTo("DOUBLE CLEAR"));
+            Assert.That(ScoreRules.ClearLabel(1, 1), Is.EqualTo("CROSS CLEAR"));
         }
     }
 }

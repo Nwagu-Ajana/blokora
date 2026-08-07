@@ -1,14 +1,15 @@
 {
   "name": "Blokora.Tests",
   "rootNamespace": "Blokora.Tests",
-  "references": ["Blokora.Runtime", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+  "references": ["Blokora.Runtime"],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": true,
   "precompiledReferences": ["nunit.framework.dll"],
+  "optionalUnityReferences": ["TestAssemblies"],
   "autoReferenced": false,
-  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "defineConstraints": [],
   "versionDefines": [],
   "noEngineReferences": false
 }
