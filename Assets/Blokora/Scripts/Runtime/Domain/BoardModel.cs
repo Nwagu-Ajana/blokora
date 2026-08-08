@@ -52,5 +52,12 @@ namespace Blokora.Domain
         }
 
         public void Reset() { Array.Clear(occupied, 0, occupied.Length); }
+
+        // Test/scenario fixture hook. Normal gameplay always uses Place so line-clear rules remain authoritative.
+        public void SetFilledForTesting(int x, int y, bool value = true)
+        {
+            if (!IsInside(x, y)) throw new ArgumentOutOfRangeException();
+            occupied[x, y] = value;
+        }
     }
 }

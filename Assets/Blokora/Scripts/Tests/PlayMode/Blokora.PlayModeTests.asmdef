@@ -1,0 +1,15 @@
+{
+  "name": "Blokora.PlayModeTests",
+  "rootNamespace": "Blokora.Tests",
+  "references": ["Blokora.Runtime"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

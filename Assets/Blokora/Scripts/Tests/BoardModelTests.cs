@@ -31,7 +31,7 @@ namespace Blokora.Tests
         {
             var board = new BoardModel(2, 2); var single = new PieceDefinition("single", (0, 0));
             Assert.That(board.HasAnyValidPlacement(new List<PieceDefinition> { single }), Is.True);
-            board.Place(single, 0, 0); board.Place(single, 1, 0); board.Place(single, 0, 1); board.Place(single, 1, 1);
+            board.SetFilledForTesting(0, 0); board.SetFilledForTesting(1, 0); board.SetFilledForTesting(0, 1); board.SetFilledForTesting(1, 1);
             Assert.That(board.HasAnyValidPlacement(new List<PieceDefinition> { single }), Is.False);
         }
 

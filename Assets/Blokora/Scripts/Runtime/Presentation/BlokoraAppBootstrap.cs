@@ -8,6 +8,7 @@ namespace Blokora.Presentation
 {
     public sealed class BlokoraAppBootstrap : MonoBehaviour
     {
+        private enum Screen { Home, Solo, Shop, Profile, Settings, Message, Result }
         private readonly Color background = new Color32(15, 23, 42, 255);
         private readonly Color surface = new Color32(30, 41, 59, 255);
         private readonly Color primary = new Color32(59, 130, 246, 255);
@@ -21,11 +22,12 @@ namespace Blokora.Presentation
         private Text coinsLabel;
         private Text gemsLabel;
         private Text pageTitle;
+        private Screen currentScreen;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void CreateIfMissing()
         {
-            if (FindObjectOfType<BlokoraAppBootstrap>() != null) return;
+            if (FindFirstObjectByType<BlokoraAppBootstrap>() != null) return;
             var app = new GameObject("BlokoraApp");
             app.AddComponent<BlokoraAppBootstrap>();
         }
@@ -33,8 +35,15 @@ namespace Blokora.Presentation
         private void Awake()
         {
             controller = gameObject.AddComponent<BlokoraGameController>(); controller.StartEndless();
-            if (FindObjectOfType<EventSystem>() == null) { var events = new GameObject("EventSystem"); events.AddComponent<EventSystem>(); events.AddComponent<StandaloneInputModule>(); }
+            if (FindFirstObjectByType<EventSystem>() == null) { var events = new GameObject("EventSystem"); events.AddComponent<EventSystem>(); events.AddComponent<StandaloneInputModule>(); }
             BuildInterface();
+        }
+
+        private void Update()
+        {
+            if (!Input.GetKeyDown(KeyCode.Escape)) return;
+            if (currentScreen == Screen.Home) Application.Quit();
+            else BuildHomeScreen();
         }
 
         private void BuildInterface()
@@ -46,7 +55,7 @@ namespace Blokora.Presentation
             coinsLabel = Label(top, "COINS  500", 20, accent, new Vector2(0, 1), new Vector2(.5f, 1), new Vector2(90, -142), new Vector2(300, 44), TextAnchor.MiddleCenter);
             gemsLabel = Label(top, "GEMS  25", 20, new Color32(192, 132, 252, 255), new Vector2(.5f, 1), new Vector2(1, 1), new Vector2(-90, -142), new Vector2(300, 44), TextAnchor.MiddleCenter);
             contentRoot = Panel(root, new Color(0, 0, 0, 0), "Content"); contentRoot.anchorMin = Vector2.zero; contentRoot.anchorMax = Vector2.one; contentRoot.offsetMin = new Vector2(0, 225); contentRoot.offsetMax = new Vector2(0, -220);
-            BuildSoloScreen();
+            BuildHomeScreen();
             var nav = Panel(root, new Color32(18, 30, 53, 255), "Navigation"); nav.anchorMin = new Vector2(0, 0); nav.anchorMax = new Vector2(1, 0); nav.sizeDelta = new Vector2(0, 185); nav.anchoredPosition = new Vector2(0, 92);
             var navLayout = nav.gameObject.AddComponent<HorizontalLayoutGroup>(); navLayout.spacing = 10; navLayout.padding = new RectOffset(20, 20, 22, 22); navLayout.childAlignment = TextAnchor.MiddleCenter; navLayout.childForceExpandWidth = true;
             AddNavButton(nav, "HOME", () => BuildHomeScreen()); AddNavButton(nav, "SOLO", () => BuildSoloScreen()); AddNavButton(nav, "SHOP", () => BuildShopScreen()); AddNavButton(nav, "PROFILE", () => BuildProfileScreen());
@@ -55,6 +64,7 @@ namespace Blokora.Presentation
 
         private void BuildSoloScreen()
         {
+            currentScreen = Screen.Solo;
             ClearContent();
             pageTitle = Label(contentRoot, "SOLO ENDLESS", 28, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -45), new Vector2(0, 50), TextAnchor.MiddleCenter);
             scoreLabel = Label(contentRoot, "SCORE  0   •   COMBO 0", 24, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -105), new Vector2(0, 50), TextAnchor.MiddleCenter);
@@ -65,13 +75,33 @@ namespace Blokora.Presentation
             UpdateScore();
         }
 
-        private void BuildHomeScreen() { ClearContent(); Label(contentRoot, "WELCOME BACK", 34, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -120), new Vector2(0, 60), TextAnchor.MiddleCenter); Label(contentRoot, controller.Progress.UserName + "  •  LEVEL " + controller.Progress.Level, 22, new Color32(148, 163, 184, 255), new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -180), new Vector2(0, 45), TextAnchor.MiddleCenter); AddBigAction("PLAY SOLO", primary, () => BuildSoloScreen(), -360); AddBigAction("RANKED BATTLE", new Color32(124, 58, 237, 255), () => ShowMessage("RANKED BATTLE", "Online competitive play will unlock when Blokora matchmaking is configured."), -470); AddBigAction("DAILY QUESTS", surface, () => ShowMessage("DAILY QUESTS", "Play a Solo run to progress your first quest: clear lines and build a combo."), -580); }
-        private void BuildShopScreen() { ClearContent(); Label(contentRoot, "SHOP", 34, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -100), new Vector2(0, 60), TextAnchor.MiddleCenter); Label(contentRoot, "COSMETICS NEVER CHANGE GAMEPLAY", 18, new Color32(148, 163, 184, 255), new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -155), new Vector2(0, 40), TextAnchor.MiddleCenter); AddBigAction("CLASSIC SKIN   •   " + (controller.Progress.EquippedSkin == "classic" ? "EQUIPPED" : "EQUIP"), primary, () => { controller.Progress.TryPurchaseAndEquip("classic", 0); BuildShopScreen(); }, -300); AddBigAction("NEON SKIN   •   " + (controller.Progress.Owns("neon") ? "OWNED" : "250 COINS"), new Color32(30, 41, 59, 255), () => { controller.Progress.TryPurchaseAndEquip("neon", 250); BuildShopScreen(); }, -410); AddBigAction("DAILY REWARD   •   +100 COINS", new Color32(16, 185, 129, 255), () => { controller.Progress.TryClaimDailyReward(out _); BuildShopScreen(); }, -520); }
-        private void BuildProfileScreen() { ClearContent(); Label(contentRoot, "PROFILE", 34, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -95), new Vector2(0, 60), TextAnchor.MiddleCenter); Label(contentRoot, controller.Progress.UserName + "\nLEVEL " + controller.Progress.Level + "   XP " + controller.Progress.Xp + "\nHIGH SCORE  " + controller.Progress.HighScore + "\nGAMES  " + controller.Progress.GamesPlayed + "   LINES  " + controller.Progress.LinesCleared + "\nBEST COMBO  " + controller.Progress.BestCombo, 22, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -300), new Vector2(800, 300), TextAnchor.MiddleCenter); AddBigAction("SETTINGS", surface, () => BuildSettingsScreen(), -570); }
-        private void BuildSettingsScreen() { ClearContent(); Label(contentRoot, "SETTINGS", 34, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -105), new Vector2(0, 60), TextAnchor.MiddleCenter); AddBigAction("MUSIC  •  " + (controller.Settings.Music ? "ON" : "OFF"), surface, () => { controller.Settings.SetMusic(!controller.Settings.Music); BuildSettingsScreen(); }, -260); AddBigAction("SOUND EFFECTS  •  " + (controller.Settings.SoundEffects ? "ON" : "OFF"), surface, () => { controller.Settings.SetSoundEffects(!controller.Settings.SoundEffects); BuildSettingsScreen(); }, -370); AddBigAction("HAPTICS  •  " + (controller.Settings.Haptics ? "ON" : "OFF"), surface, () => { controller.Settings.SetHaptics(!controller.Settings.Haptics); BuildSettingsScreen(); }, -480); AddBigAction("BACK TO PROFILE", primary, () => BuildProfileScreen(), -610); }
+        private void BuildHomeScreen()
+        {
+            currentScreen = Screen.Home;
+            ClearContent();
+            Label(contentRoot, "WELCOME BACK", 34, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -95), new Vector2(0, 60), TextAnchor.MiddleCenter);
+            Label(contentRoot, controller.Progress.UserName + "  •  LEVEL " + controller.Progress.Level, 22, new Color32(148, 163, 184, 255), new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -150), new Vector2(0, 45), TextAnchor.MiddleCenter);
+            AddHomeAction("QUICK PLAY", primary, () => StartFreshSolo(), -290, -210);
+            AddHomeAction("SOLO", new Color32(16, 185, 129, 255), () => StartFreshSolo(), 210, -290);
+            AddHomeAction("SHOP", surface, () => BuildShopScreen(), -210, -410);
+            AddHomeAction("PROFILE", surface, () => BuildProfileScreen(), 210, -410);
+            AddHomeAction("RANKED BATTLE", new Color32(124, 58, 237, 255), () => ShowMessage("RANKED BATTLE", "COMING SOON\nOnline competitive play is intentionally disabled until Blokora matchmaking is configured."), -210, -530);
+            AddHomeAction("TOURNAMENT", surface, () => ShowMessage("TOURNAMENT", "COMING SOON\nTournament services are intentionally unavailable in this local build."), 210, -530);
+            AddHomeAction("DAILY QUESTS", surface, () => ShowMessage("DAILY QUESTS", "Play Solo to progress local practice objectives. Full mission tracking is coming soon."), -210, -650);
+            AddHomeAction("EVENTS", surface, () => ShowMessage("EVENTS", "COMING SOON\nLive events require a Blokora service and are not being simulated."), 210, -650);
+            AddHomeAction("SOCIAL", surface, () => ShowMessage("SOCIAL", "COMING SOON\nFriends and chat are intentionally unavailable in this offline build."), -210, -770);
+            AddHomeAction("SETTINGS", surface, () => BuildSettingsScreen(), 210, -770);
+        }
+        private void StartFreshSolo() { controller.Restart(); BuildSoloScreen(); }
+        private void BuildShopScreen() { currentScreen = Screen.Shop; ClearContent(); Label(contentRoot, "SHOP", 34, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -100), new Vector2(0, 60), TextAnchor.MiddleCenter); Label(contentRoot, "COSMETICS NEVER CHANGE GAMEPLAY", 18, new Color32(148, 163, 184, 255), new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -155), new Vector2(0, 40), TextAnchor.MiddleCenter); AddBigAction("CLASSIC SKIN   •   " + (controller.Progress.EquippedSkin == "classic" ? "EQUIPPED" : "EQUIP"), primary, () => { controller.Progress.TryPurchaseAndEquip("classic", 0); BuildShopScreen(); }, -300); AddBigAction("NEON SKIN   •   " + (controller.Progress.Owns("neon") ? "OWNED" : "250 COINS"), new Color32(30, 41, 59, 255), BuyNeon, -410); AddBigAction("DAILY REWARD   •   +100 COINS", new Color32(16, 185, 129, 255), ClaimDailyReward, -520); }
+        private void BuyNeon() { if (!controller.Progress.TryPurchaseAndEquip("neon", 250)) ShowMessage("PURCHASE UNAVAILABLE", "You need 250 Coins. No premium or payment transaction was attempted."); else BuildShopScreen(); }
+        private void ClaimDailyReward() { int coins; if (controller.Progress.TryClaimDailyReward(out coins)) ShowMessage("REWARD CLAIMED", "+" + coins + " Coins were saved locally."); else ShowMessage("ALREADY CLAIMED", "Your next daily reward will be available tomorrow."); }
+        private void BuildProfileScreen() { currentScreen = Screen.Profile; ClearContent(); Label(contentRoot, "PROFILE", 34, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -95), new Vector2(0, 60), TextAnchor.MiddleCenter); Label(contentRoot, controller.Progress.UserName + "\nLEVEL " + controller.Progress.Level + "   XP " + controller.Progress.Xp + "\nHIGH SCORE  " + controller.Progress.HighScore + "\nGAMES  " + controller.Progress.GamesPlayed + "   LINES  " + controller.Progress.LinesCleared + "\nBEST COMBO  " + controller.Progress.BestCombo, 22, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -300), new Vector2(800, 300), TextAnchor.MiddleCenter); AddBigAction("SETTINGS", surface, () => BuildSettingsScreen(), -570); }
+        private void BuildSettingsScreen() { currentScreen = Screen.Settings; ClearContent(); Label(contentRoot, "SETTINGS", 34, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -105), new Vector2(0, 60), TextAnchor.MiddleCenter); AddBigAction("MUSIC  •  " + (controller.Settings.Music ? "ON" : "OFF"), surface, () => { controller.Settings.SetMusic(!controller.Settings.Music); BuildSettingsScreen(); }, -260); AddBigAction("SOUND EFFECTS  •  " + (controller.Settings.SoundEffects ? "ON" : "OFF"), surface, () => { controller.Settings.SetSoundEffects(!controller.Settings.SoundEffects); BuildSettingsScreen(); }, -370); AddBigAction("HAPTICS  •  " + (controller.Settings.Haptics ? "ON" : "OFF"), surface, () => { controller.Settings.SetHaptics(!controller.Settings.Haptics); BuildSettingsScreen(); }, -480); AddBigAction("BACK TO PROFILE", primary, () => BuildProfileScreen(), -610); }
         private void AddBigAction(string text, Color color, UnityEngine.Events.UnityAction action, float y) { var button = Button(contentRoot, text, color); button.anchorMin = new Vector2(.5f, 1); button.anchorMax = new Vector2(.5f, 1); button.sizeDelta = new Vector2(620, 76); button.anchoredPosition = new Vector2(0, y); button.GetComponent<Button>().onClick.AddListener(action); }
+        private void AddHomeAction(string text, Color color, UnityEngine.Events.UnityAction action, float x, float y) { var button = Button(contentRoot, text, color); button.anchorMin = new Vector2(.5f, 1); button.anchorMax = new Vector2(.5f, 1); button.sizeDelta = new Vector2(390, 82); button.anchoredPosition = new Vector2(x, y); button.GetComponent<Button>().onClick.AddListener(action); }
         private void AddNavButton(Transform parent, string text, UnityEngine.Events.UnityAction action) { var button = Button(parent, text, new Color32(38, 55, 82, 255)); button.gameObject.GetComponent<LayoutElement>().preferredHeight = 100; button.GetComponent<Button>().onClick.AddListener(action); }
-        private void ShowMessage(string title, string body) { ClearContent(); Label(contentRoot, title, 32, accent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -200), new Vector2(0, 60), TextAnchor.MiddleCenter); Label(contentRoot, body, 21, Color.white, new Vector2(.12f, .5f), new Vector2(.88f, .5f), new Vector2(0, -40), new Vector2(0, 180), TextAnchor.MiddleCenter); AddBigAction("BACK HOME", primary, () => BuildHomeScreen(), -430); }
+        private void ShowMessage(string title, string body) { currentScreen = Screen.Message; ClearContent(); Label(contentRoot, title, 32, accent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -200), new Vector2(0, 60), TextAnchor.MiddleCenter); Label(contentRoot, body, 21, Color.white, new Vector2(.12f, .5f), new Vector2(.88f, .5f), new Vector2(0, -40), new Vector2(0, 180), TextAnchor.MiddleCenter); AddBigAction("BACK HOME", primary, () => BuildHomeScreen(), -430); }
         private void ClearContent() { if (contentRoot == null) return; for (var i = contentRoot.childCount - 1; i >= 0; i--) Destroy(contentRoot.GetChild(i).gameObject); boardRoot = null; trayRoot = null; scoreLabel = null; statusLabel = null; }
         private void RefreshHeader() { if (coinsLabel != null) coinsLabel.text = "COINS  " + controller.Progress.Coins; if (gemsLabel != null) gemsLabel.text = "GEMS  " + controller.Progress.Gems; }
 
@@ -110,8 +140,23 @@ namespace Blokora.Presentation
             }
         }
 
-        public void Refresh() { if (boardRoot == null) return; DrawBoard(boardRoot.GetComponent<GridLayoutGroup>()); UpdateScore(); DrawTray(trayRoot); }
+        public void Refresh()
+        {
+            if (boardRoot == null) return;
+            if (controller.Session.IsGameOver) { BuildResultScreen(); return; }
+            DrawBoard(boardRoot.GetComponent<GridLayoutGroup>()); UpdateScore(); DrawTray(trayRoot);
+        }
         private void UpdateScore() { if (scoreLabel != null) scoreLabel.text = $"SCORE  {controller.Session.Score}   •   COMBO {controller.Session.Combo}"; if (statusLabel != null) statusLabel.text = controller.Session.IsGameOver ? $"RUN COMPLETE  •  {controller.Session.Score} POINTS  •  {controller.Session.LinesCleared} LINES" : "DRAG A BLOCK ONTO THE BOARD"; RefreshHeader(); }
+        private void BuildResultScreen()
+        {
+            currentScreen = Screen.Result;
+            ClearContent();
+            Label(contentRoot, "RUN COMPLETE", 36, accent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -130), new Vector2(0, 65), TextAnchor.MiddleCenter);
+            Label(contentRoot, "SCORE  " + controller.Session.Score + "\nLINES  " + controller.Session.LinesCleared + "\nBEST COMBO  " + controller.Session.BestCombo + "\nHIGH SCORE  " + controller.Progress.HighScore, 25, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -310), new Vector2(700, 260), TextAnchor.MiddleCenter);
+            AddBigAction("CLAIM REWARD  •  +COINS", new Color32(16, 185, 129, 255), () => ShowMessage("REWARD CLAIMED", "Your Solo reward was already saved to your local profile."), -500);
+            AddBigAction("PLAY AGAIN", primary, () => { controller.Restart(); BuildSoloScreen(); }, -610);
+            AddBigAction("HOME", surface, () => BuildHomeScreen(), -720);
+        }
         public void ShowPlacementPreview(PieceDefinition piece, int x, int y)
         {
             if (boardRoot == null) return;
@@ -130,7 +175,7 @@ namespace Blokora.Presentation
         public void ClearPlacementPreview() { if (boardRoot == null) return; DrawBoard(boardRoot.GetComponent<GridLayoutGroup>()); UpdateScore(); }
         private static RectTransform Panel(Transform parent, Color color, string name) { var go = new GameObject(name); go.transform.SetParent(parent, false); var image = go.AddComponent<Image>(); image.color = color; return go.GetComponent<RectTransform>(); }
         private static void Stretch(RectTransform rect) { rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero; }
-        private static Text Label(Transform parent, string text, int size, Color color, Vector2 min, Vector2 max, Vector2 position, Vector2 dimensions, TextAnchor anchor) { var go = new GameObject(text); go.transform.SetParent(parent, false); var rect = go.AddComponent<RectTransform>(); rect.anchorMin = min; rect.anchorMax = max; rect.sizeDelta = dimensions; rect.anchoredPosition = position; var label = go.AddComponent<Text>(); label.text = text; label.font = Resources.GetBuiltinResource<Font>("Arial.ttf"); label.fontSize = size; label.color = color; label.alignment = anchor; label.fontStyle = FontStyle.Bold; return label; }
+        private static Text Label(Transform parent, string text, int size, Color color, Vector2 min, Vector2 max, Vector2 position, Vector2 dimensions, TextAnchor anchor) { var go = new GameObject(text); go.transform.SetParent(parent, false); var rect = go.AddComponent<RectTransform>(); rect.anchorMin = min; rect.anchorMax = max; rect.sizeDelta = dimensions; rect.anchoredPosition = position; var label = go.AddComponent<Text>(); label.text = text; label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); label.fontSize = size; label.color = color; label.alignment = anchor; label.fontStyle = FontStyle.Bold; return label; }
         private static RectTransform Button(Transform parent, string text, Color color) { var rect = Panel(parent, color, text); var button = rect.gameObject.AddComponent<Button>(); var layout = rect.gameObject.AddComponent<LayoutElement>(); layout.minHeight = 64; Label(rect, text, 24, Color.white, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter); return rect; }
     }
 
